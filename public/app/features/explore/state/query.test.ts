@@ -38,20 +38,23 @@ import {
   clearCache,
   importQueries,
   queryReducer,
+  runLoadMoreLogsQueries,
   runQueries,
   scanStartAction,
   scanStopAction,
   setSupplementaryQueryEnabled,
   addQueryRow,
+  clearLokiTimeRangeViolationAction,
   cleanSupplementaryQueryDataProviderAction,
   clearLogs,
   queryStreamUpdatedAction,
   QueryEndedPayload,
   changeQueries,
+  setLokiTimeRangeViolationAction,
 } from './query';
 import * as actions from './query';
 import { createDefaultInitialState } from './testHelpers';
-import { makeExplorePaneState } from './utils';
+import { createEmptyQueryResponse, makeExplorePaneState } from './utils';
 
 jest.mock('app/features/logs/logsModel');
 
@@ -174,6 +177,102 @@ describe('runQueries', () => {
     await dispatch(runQueries({ exploreId: 'left' }));
     expect(getState().explore.panes.left!.showMetrics).toBeTruthy();
     expect(getState().explore.panes.left!.graphResult).toBeDefined();
+  });
+
+  it('stores and clears the Loki time range violation', () => {
+    const violation = {
+      durationMs: 31 * 60 * 1000,
+      maxDurationMs: 30 * 60 * 1000,
+      maxDurationLabel: '30m',
+    };
+
+    reducerTester<ExploreItemState>()
+      .givenReducer(queryReducer, {
+        lokiTimeRangeViolation: undefined,
+      } as unknown as ExploreItemState)
+      .whenActionIsDispatched(setLokiTimeRangeViolationAction({ exploreId: 'left', violation }))
+      .thenStateShouldEqual({ lokiTimeRangeViolation: violation } as unknown as ExploreItemState)
+      .whenActionIsDispatched(clearLokiTimeRangeViolationAction({ exploreId: 'left' }))
+      .thenStateShouldEqual({ lokiTimeRangeViolation: undefined } as unknown as ExploreItemState);
+  });
+
+  it('does not run a Loki query when the selected range exceeds 30 minutes', async () => {
+    const from = new Date('2026-11-12T11:00:00.000Z').valueOf();
+    const to = new Date('2026-11-12T12:00:00.000Z').valueOf();
+    const datasource = {
+      query: jest.fn(),
+      getRef: jest.fn(),
+      getDataProvider: jest.fn(),
+      getSupportedSupplementaryQueryTypes: jest.fn().mockReturnValue([]),
+      getSupplementaryQuery: jest.fn(),
+      meta: { id: 'loki' },
+      type: 'loki',
+    };
+    const range = {
+      from: { valueOf: () => from },
+      to: { valueOf: () => to },
+      raw: { from: 'now-1h', to: 'now' },
+    };
+    const { dispatch, getState } = configureStore({
+      ...defaultInitialState,
+      explore: {
+        panes: {
+          left: {
+            ...defaultInitialState.explore.panes.left,
+            datasourceInstance: datasource,
+            range,
+          },
+        },
+      },
+    } as unknown as Partial<StoreState>);
+
+    await dispatch(runQueries({ exploreId: 'left' }));
+
+    expect(datasource.query).not.toHaveBeenCalled();
+    expect(getState().explore.panes.left!.lokiTimeRangeViolation).toEqual({
+      durationMs: expect.any(Number),
+      maxDurationMs: 30 * 60 * 1000,
+      maxDurationLabel: '30m',
+    });
+  });
+
+  it('does not load more Loki logs when the requested range exceeds 30 minutes', async () => {
+    const datasource = {
+      query: jest.fn(),
+      getRef: jest.fn(),
+      getDataProvider: jest.fn(),
+      getSupportedSupplementaryQueryTypes: jest.fn().mockReturnValue([]),
+      getSupplementaryQuery: jest.fn(),
+      meta: { id: 'loki' },
+      type: 'loki',
+    };
+    const { dispatch, getState } = configureStore({
+      ...defaultInitialState,
+      explore: {
+        panes: {
+          left: {
+            ...defaultInitialState.explore.panes.left,
+            datasourceInstance: datasource,
+            queryResponse: {
+              ...createEmptyQueryResponse(),
+              logsFrames: [{ refId: 'A' }],
+              logsResult: { queries: [{ refId: 'A', expr: '{job="test"}' }] },
+            },
+          },
+        },
+      },
+    } as unknown as Partial<StoreState>);
+    const from = new Date('2026-11-12T11:00:00.000Z').valueOf();
+    const to = new Date('2026-11-12T12:00:00.000Z').valueOf();
+
+    await dispatch(runLoadMoreLogsQueries({ exploreId: 'left', absoluteRange: { from, to } }));
+
+    expect(datasource.query).not.toHaveBeenCalled();
+    expect(getState().explore.panes.left!.lokiTimeRangeViolation).toEqual({
+      durationMs: expect.any(Number),
+      maxDurationMs: 30 * 60 * 1000,
+      maxDurationLabel: '30m',
+    });
   });
 
   it('should modify the request-id for all supplementary queries', async () => {

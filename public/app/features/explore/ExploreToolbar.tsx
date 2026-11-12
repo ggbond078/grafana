@@ -26,6 +26,8 @@ import { getFiscalYearStartMonth, getTimeZone } from '../profile/state/selectors
 
 import { ExploreTimeControls } from './ExploreTimeControls';
 import { LiveTailButton } from './LiveTailButton';
+import { getLokiTimeRangeViolation, isLokiExploreQuery } from './LokiQueryTimeRangeLimit';
+import { LokiQueryTimeRangeLimitBadge } from './LokiQueryTimeRangeLimitBadge';
 import { ShortLinkButtonMenu } from './ShortLinkButtonMenu';
 import { ToolbarExtensionPoint } from './extensions/ToolbarExtensionPoint';
 import { changeDatasource } from './state/datasource';
@@ -54,6 +56,10 @@ const getStyles = (theme: GrafanaTheme2, splitted: Boolean) => ({
     marginRight: theme.spacing(0.5),
     width: splitted && theme.spacing(6),
   }),
+  timeControls: css({
+    alignItems: 'center',
+    display: 'flex',
+  }),
 });
 
 interface Props {
@@ -70,13 +76,27 @@ export function ExploreToolbar({ exploreId, onChangeTime, onContentOutlineToogle
 
   const timeZone = useSelector((state: StoreState) => getTimeZone(state.user));
   const fiscalYearStartMonth = useSelector((state: StoreState) => getFiscalYearStartMonth(state.user));
-  const { refreshInterval, datasourceInstance, range, isLive, isPaused, syncedTimes } = useSelector(
+  const { refreshInterval, datasourceInstance, range, queries, isLive, isPaused, syncedTimes } = useSelector(
     (state: StoreState) => ({
-      ...pick(state.explore.panes[exploreId]!, 'refreshInterval', 'datasourceInstance', 'range', 'isLive', 'isPaused'),
+      ...pick(
+        state.explore.panes[exploreId]!,
+        'refreshInterval',
+        'datasourceInstance',
+        'range',
+        'queries',
+        'isLive',
+        'isPaused'
+      ),
       syncedTimes: state.explore.syncedTimes,
     }),
     shallowEqual
   );
+  const lokiViolation = getLokiTimeRangeViolation({
+    datasourceType: datasourceInstance?.type,
+    queries,
+    range,
+  });
+  const isLokiQuery = isLokiExploreQuery({ datasourceType: datasourceInstance?.type, queries });
   const loading = useSelector(selectIsWaitingForData(exploreId));
   const isLargerPane = useSelector((state: StoreState) => state.explore.largerExploreId === exploreId);
   const showSmallTimePicker = useSelector((state) => splitted || state.explore.panes[exploreId]!.containerWidth < 1210);
@@ -282,20 +302,22 @@ export function ExploreToolbar({ exploreId, onChangeTime, onContentOutlineToogle
             extensionsToShow="basic"
           />,
           !isLive && (
-            <ExploreTimeControls
-              key="timeControls"
-              exploreId={exploreId}
-              range={range}
-              timeZone={timeZone}
-              fiscalYearStartMonth={fiscalYearStartMonth}
-              onChangeTime={onChangeTime}
-              splitted={splitted}
-              syncedTimes={syncedTimes}
-              onChangeTimeSync={onChangeTimeSync}
-              hideText={showSmallTimePicker}
-              onChangeTimeZone={onChangeTimeZone}
-              onChangeFiscalYearStartMonth={onChangeFiscalYearStartMonth}
-            />
+            <div className={styles.timeControls} key="timeControls">
+              <ExploreTimeControls
+                exploreId={exploreId}
+                range={range}
+                timeZone={timeZone}
+                fiscalYearStartMonth={fiscalYearStartMonth}
+                onChangeTime={onChangeTime}
+                splitted={splitted}
+                syncedTimes={syncedTimes}
+                onChangeTimeSync={onChangeTimeSync}
+                hideText={showSmallTimePicker}
+                onChangeTimeZone={onChangeTimeZone}
+                onChangeFiscalYearStartMonth={onChangeFiscalYearStartMonth}
+              />
+              {isLokiQuery && <LokiQueryTimeRangeLimitBadge exceeded={Boolean(lokiViolation)} />}
+            </div>
           ),
           <RefreshPicker
             key="refreshPicker"

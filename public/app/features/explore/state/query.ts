@@ -18,9 +18,10 @@ import {
   QueryFixAction,
   ScopedVars,
   SupplementaryQueryType,
+  TimeRange,
 } from '@grafana/data';
 import { combinePanelData } from '@grafana/o11y-ds-frontend';
-import { config, getDataSourceSrv } from '@grafana/runtime';
+import { config, getDataSourceSrv, reportInteraction } from '@grafana/runtime';
 import { DataQuery } from '@grafana/schema';
 import { notifyApp } from 'app/core/reducers/appNotification';
 import {
@@ -51,6 +52,7 @@ import { createAsyncThunk, StoreState, ThunkDispatch, ThunkResult } from 'app/ty
 
 import { createErrorNotification } from '../../../core/copy/appNotification';
 import { runRequest } from '../../query/state/runRequest';
+import { getLokiTimeRangeViolation, LokiTimeRangeViolation } from '../LokiQueryTimeRangeLimit';
 import { decorateData, decorateWithLogsResult } from '../utils/decorators';
 import {
   getSupplementaryQueryProvider,
@@ -518,6 +520,40 @@ interface RunQueriesOptions {
   exploreId: string;
   preserveCache?: boolean;
 }
+
+function shouldBlockLokiQuery(
+  exploreId: string,
+  dispatch: ThunkDispatch,
+  getState: () => StoreState,
+  range: TimeRange = getState().explore.panes[exploreId]!.range
+) {
+  const pane = getState().explore.panes[exploreId]!;
+  const violation = getLokiTimeRangeViolation({
+    datasourceType: pane.datasourceInstance?.type,
+    queries: pane.queries,
+    range,
+  });
+
+  if (!violation) {
+    dispatch(clearLokiTimeRangeViolationAction({ exploreId }));
+    return false;
+  }
+
+  dispatch(setLokiTimeRangeViolationAction({ exploreId, violation }));
+  reportInteraction('grafana_explore_loki_time_range_limit_blocked', {
+    durationMs: violation.durationMs,
+    maxDurationMs: violation.maxDurationMs,
+  });
+  return true;
+}
+
+export const setLokiTimeRangeViolationAction = createAction<{ exploreId: string; violation: LokiTimeRangeViolation }>(
+  'explore/setLokiTimeRangeViolation'
+);
+export const clearLokiTimeRangeViolationAction = createAction<{ exploreId: string }>(
+  'explore/clearLokiTimeRangeViolation'
+);
+
 /**
  * Main action to run queries and dispatches sub-actions based on which result viewers are active
  */
@@ -536,6 +572,10 @@ export const runQueries = createAsyncThunk<void, RunQueriesOptions>(
     const correlations$ = getCorrelations(exploreId);
 
     dispatch(updateTime({ exploreId }));
+
+    if (shouldBlockLokiQuery(exploreId, dispatch, getState)) {
+      return;
+    }
 
     // We always want to clear cache unless we explicitly pass preserveCache parameter
     if (preserveCache !== true) {
@@ -762,6 +802,10 @@ export const runLoadMoreLogsQueries = createAsyncThunk<void, RunLoadMoreLogsQuer
       },
       getFiscalYearStartMonth(getState().user)
     );
+    if (shouldBlockLokiQuery(exploreId, dispatch, getState, range)) {
+      return;
+    }
+
     const transaction = buildQueryTransaction(exploreId, logQueries, queryOptions, range, false, timeZone, scopedVars);
 
     dispatch(changeLoadingStateAction({ exploreId, loadingState: LoadingState.Loading }));
@@ -1034,6 +1078,20 @@ export function setSupplementaryQueryEnabled(
 // the frozen state.
 // https://github.com/reduxjs/redux-toolkit/issues/242
 export const queryReducer = (state: ExploreItemState, action: AnyAction): ExploreItemState => {
+  if (setLokiTimeRangeViolationAction.match(action)) {
+    return {
+      ...state,
+      lokiTimeRangeViolation: action.payload.violation,
+    };
+  }
+
+  if (clearLokiTimeRangeViolationAction.match(action)) {
+    return {
+      ...state,
+      lokiTimeRangeViolation: undefined,
+    };
+  }
+
   if (addQueryRowAction.match(action)) {
     const { queries } = state;
     const { index, query } = action.payload;

@@ -21,6 +21,7 @@ import {
 } from '@grafana/data';
 import { CorrelationData } from '@grafana/runtime';
 import { RichHistorySearchFilters, RichHistorySettings } from 'app/core/utils/richHistoryTypes';
+import { LokiTimeRangeViolation } from 'app/features/explore/LokiQueryTimeRangeLimit';
 
 export type ExploreQueryParams = UrlQueryMap;
 
@@ -110,6 +111,7 @@ export const EXPLORE_GRAPH_STYLES = ['lines', 'bars', 'points', 'stacked_lines',
 export type ExploreGraphStyle = (typeof EXPLORE_GRAPH_STYLES)[number];
 
 export interface ExploreItemState {
+  lokiTimeRangeViolation?: LokiTimeRangeViolation;
   /**
    * Width used for calculating the graph interval (can't have more datapoints than pixels)
    */

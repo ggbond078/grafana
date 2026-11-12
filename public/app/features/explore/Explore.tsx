@@ -47,6 +47,7 @@ import { FlameGraphExploreContainer } from './FlameGraph/FlameGraphExploreContai
 import { GraphContainer } from './Graph/GraphContainer';
 import LogsContainer from './Logs/LogsContainer';
 import { LogsSamplePanel } from './Logs/LogsSamplePanel';
+import { LokiQueryTimeRangeLimitPrompt } from './LokiQueryTimeRangeLimitPrompt';
 import { NoData } from './NoData';
 import { NoDataSourceCallToAction } from './NoDataSourceCallToAction';
 import { NodeGraphContainer } from './NodeGraph/NodeGraphContainer';
@@ -629,6 +630,14 @@ export class Explore extends PureComponent<Props, ExploreState> {
           onContentOutlineToogle={this.onContentOutlineToogle}
           isContentOutlineOpen={contentOutlineVisible}
         />
+        {this.props.lokiTimeRangeViolation && (
+          <LokiQueryTimeRangeLimitPrompt
+            exploreId={exploreId}
+            range={this.props.range}
+            timeZone={this.props.timeZone}
+            violation={this.props.lokiTimeRangeViolation}
+          />
+        )}
         <div
           style={{
             position: 'relative',
@@ -811,6 +820,8 @@ function mapStateToProps(state: StoreState, { exploreId }: ExploreProps) {
     showFlameGraph,
     showRawPrometheus,
     supplementaryQueries,
+    range,
+    lokiTimeRangeViolation,
     correlationEditorHelperData,
     compact,
     queryLibraryRef,
@@ -850,6 +861,8 @@ function mapStateToProps(state: StoreState, { exploreId }: ExploreProps) {
     exploreActiveDS: selectExploreDSMaps(state),
     queryLibraryRef,
     queriesChangedIndexAtRun,
+    range,
+    lokiTimeRangeViolation,
   };
 }
 

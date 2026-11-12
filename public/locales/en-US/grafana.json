@@ -7705,6 +7705,20 @@
       "outline": "Outline",
       "tooltip-content-outline": "Content outline"
     },
+    "loki-time-limit": {
+      "alert": "Query blocked to protect Loki",
+      "badge-exceeded": "Exceeds {{limit}}",
+      "badge-ok": "Max {{limit}}",
+      "description": "The selected {{duration}} minute range exceeds the {{limit}} limit. Narrow the range before running the query.",
+      "edit": "Edit time range",
+      "narrow": "Use last {{limit}}",
+      "narrowed-message": "Query is now limited to {{limit}}.",
+      "narrowed-title": "Time range narrowed",
+      "prompt": "Query blocked: {{duration}} minutes exceeds the {{limit}} limit. Narrow the time range to continue.",
+      "selected": "Selected",
+      "suggested": "Suggested",
+      "title": "Query time range is too wide"
+    },
     "feature-toggle-page": {
       "description-explore-disabled": "To enable Explore, enable it in the Grafana config:",
       "title-explore-disabled": "Explore is disabled"

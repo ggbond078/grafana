@@ -7650,6 +7650,20 @@
       "outline": "轮廓",
       "tooltip-content-outline": "内容大纲"
     },
+    "loki-time-limit": {
+      "alert": "为保护 Loki 已阻止查询",
+      "badge-exceeded": "已超过 {{limit}}",
+      "badge-ok": "上限 {{limit}}",
+      "description": "所选的 {{duration}} 分钟范围超过 {{limit}} 限制。请先缩小时间范围再运行查询。",
+      "edit": "编辑时间范围",
+      "narrow": "使用最近 {{limit}}",
+      "narrowed-message": "查询时间范围已限制为 {{limit}}。",
+      "narrowed-title": "已缩小时间范围",
+      "prompt": "已阻止查询：{{duration}} 分钟超过 {{limit}} 限制。请缩小时间范围后继续。",
+      "selected": "当前范围",
+      "suggested": "建议范围",
+      "title": "查询时间范围过大"
+    },
     "feature-toggle-page": {
       "description-explore-disabled": "要启用 Explore，请在 Grafana 配置中启用该选项：",
       "title-explore-disabled": "Explore 已禁用"
