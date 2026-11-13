@@ -530,6 +530,7 @@ function shouldBlockLokiQuery(
   const pane = getState().explore.panes[exploreId]!;
   const violation = getLokiTimeRangeViolation({
     datasourceType: pane.datasourceInstance?.type,
+    datasourceUid: pane.datasourceInstance?.uid,
     queries: pane.queries,
     range,
   });

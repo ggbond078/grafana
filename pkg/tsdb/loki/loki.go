@@ -60,11 +60,14 @@ var (
 	stagePrepareRequest  = "prepareRequest"
 	stageDatabaseRequest = "databaseRequest"
 	stageParseResponse   = "parseResponse"
+
+	queryTimeRangeTolerance = time.Second
 )
 
 type datasourceInfo struct {
-	HTTPClient *http.Client
-	URL        string
+	HTTPClient       *http.Client
+	URL              string
+	MaxQueryDuration time.Duration
 
 	// open streams
 	streams   map[string]data.FrameJSONCache
@@ -104,10 +107,16 @@ func newInstanceSettings(httpClientProvider *httpclient.Provider) datasource.Ins
 			return nil, backend.DownstreamError(fmt.Errorf("error creating http client: %w", err))
 		}
 
+		maxQueryDuration, err := parseMaxQueryDuration(settings.JSONData)
+		if err != nil {
+			return nil, err
+		}
+
 		model := &datasourceInfo{
-			HTTPClient: client,
-			URL:        settings.URL,
-			streams:    make(map[string]data.FrameJSONCache),
+			HTTPClient:       client,
+			URL:              settings.URL,
+			MaxQueryDuration: maxQueryDuration,
+			streams:          make(map[string]data.FrameJSONCache),
 		}
 		return model, nil
 	}
@@ -224,7 +233,9 @@ func queryData(ctx context.Context, req *backend.QueryDataRequest, dsInfo *datas
 		resultLock := sync.Mutex{}
 		err = concurrency.ForEachJob(ctx, len(queries), 10, func(ctx context.Context, idx int) error {
 			query := queries[idx]
-			queryRes := executeQuery(ctx, query, req, runInParallel, api, responseOpts, tracer, plog)
+			queryRes := executeQuery(
+				ctx, query, req, runInParallel, api, responseOpts, tracer, plog, dsInfo.MaxQueryDuration,
+			)
 
 			resultLock.Lock()
 			defer resultLock.Unlock()
@@ -233,7 +244,9 @@ func queryData(ctx context.Context, req *backend.QueryDataRequest, dsInfo *datas
 		})
 	} else {
 		for _, query := range queries {
-			queryRes := executeQuery(ctx, query, req, runInParallel, api, responseOpts, tracer, plog)
+			queryRes := executeQuery(
+				ctx, query, req, runInParallel, api, responseOpts, tracer, plog, dsInfo.MaxQueryDuration,
+			)
 			result.Responses[query.RefID] = queryRes
 		}
 	}
@@ -241,7 +254,7 @@ func queryData(ctx context.Context, req *backend.QueryDataRequest, dsInfo *datas
 	return result, err
 }
 
-func executeQuery(ctx context.Context, query *lokiQuery, req *backend.QueryDataRequest, runInParallel bool, api *LokiAPI, responseOpts ResponseOpts, tracer trace.Tracer, plog log.Logger) backend.DataResponse {
+func executeQuery(ctx context.Context, query *lokiQuery, req *backend.QueryDataRequest, runInParallel bool, api *LokiAPI, responseOpts ResponseOpts, tracer trace.Tracer, plog log.Logger, maxQueryDuration time.Duration) backend.DataResponse {
 	ctx, span := tracer.Start(ctx, "datasource.loki.queryData.runQueries.runQuery", trace.WithAttributes(
 		attribute.Bool("runInParallel", runInParallel),
 		attribute.String("expr", query.Expr),
@@ -253,6 +266,13 @@ func executeQuery(ctx context.Context, query *lokiQuery, req *backend.QueryDataR
 	}
 
 	defer span.End()
+
+	if err := validateQueryTimeRange(query, maxQueryDuration); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		errResp := backend.ErrorResponseWithErrorSource(err)
+		return errResp
+	}
 
 	queryRes, err := runQuery(ctx, api, query, responseOpts, plog)
 	if queryRes == nil {
@@ -268,6 +288,28 @@ func executeQuery(ctx context.Context, query *lokiQuery, req *backend.QueryDataR
 	}
 
 	return *queryRes
+}
+
+func validateQueryTimeRange(query *lokiQuery, maxQueryDuration time.Duration) error {
+	if query.QueryType != QueryTypeRange {
+		return nil
+	}
+	if maxQueryDuration <= 0 {
+		return backend.DownstreamError(fmt.Errorf("Loki maxQueryDuration must be greater than zero"))
+	}
+
+	queryDuration := query.End.Sub(query.Start)
+	if queryDuration <= maxQueryDuration+queryTimeRangeTolerance {
+		return nil
+	}
+
+	return backend.DownstreamError(
+		fmt.Errorf(
+			"Loki query time range %s exceeds the configured maximum of %s; narrow the time range and retry",
+			queryDuration,
+			maxQueryDuration,
+		),
+	)
 }
 
 // we extracted this part of the functionality to make it easy to unit-test it

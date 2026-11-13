@@ -4,17 +4,16 @@ import { GrafanaTheme2 } from '@grafana/data';
 import { t } from '@grafana/i18n';
 import { Icon, useStyles2 } from '@grafana/ui';
 
-import { LOKI_MAX_QUERY_DURATION } from './LokiQueryTimeRangeLimit';
-
 interface Props {
   exceeded: boolean;
+  maxDurationLabel: string;
 }
 
-export function LokiQueryTimeRangeLimitBadge({ exceeded }: Props) {
+export function LokiQueryTimeRangeLimitBadge({ exceeded, maxDurationLabel }: Props) {
   const styles = useStyles2(getStyles);
   const label = exceeded
-    ? t('explore.loki-time-limit.badge-exceeded', 'Exceeds {{limit}}', { limit: LOKI_MAX_QUERY_DURATION })
-    : t('explore.loki-time-limit.badge-ok', 'Max {{limit}}', { limit: LOKI_MAX_QUERY_DURATION });
+    ? t('explore.loki-time-limit.badge-exceeded', 'Exceeds {{limit}}', { limit: maxDurationLabel })
+    : t('explore.loki-time-limit.badge-ok', 'Max {{limit}}', { limit: maxDurationLabel });
 
   return (
     <span
@@ -23,7 +22,7 @@ export function LokiQueryTimeRangeLimitBadge({ exceeded }: Props) {
       data-testid="loki-time-range-limit-badge"
     >
       <Icon name={exceeded ? 'exclamation-triangle' : 'shield'} size="xs" />
-      {LOKI_MAX_QUERY_DURATION}
+      {maxDurationLabel}
     </span>
   );
 }

@@ -34,17 +34,24 @@ export function LokiQueryTimeRangeLimitPrompt({ exploreId, range, timeZone, viol
     <div className={styles.banner} role="alert" data-testid="loki-time-range-limit-prompt">
       <Stack direction="row" alignItems="center" gap={1} wrap="wrap">
         <Icon name="exclamation-triangle" size="sm" />
-        <span className={styles.message}>
-          {t(
-            'explore.loki-time-limit.prompt',
-            'Query blocked: {{duration}} minutes exceeds the {{limit}} limit. Narrow the time range to continue.',
-            { duration: durationMinutes, limit: violation.maxDurationLabel }
-          )}
-        </span>
+        <Stack direction="column" gap={0.25}>
+          <span className={styles.title}>
+            {t('explore.loki-time-limit.title', 'This log query covers a lot of time')}
+          </span>
+          <span className={styles.message}>
+            {t(
+              'explore.loki-time-limit.prompt',
+              "Loki queries over {{limit}} scan more log data and can affect log service stability. This request covers {{duration}} minutes, so it wasn't sent. Continue with the last {{limit}} to keep the query light.",
+              { duration: durationMinutes, limit: violation.maxDurationLabel }
+            )}
+          </span>
+        </Stack>
         <span className={styles.range}>{selectedRange}</span>
       </Stack>
       <Button variant="primary" size="sm" icon="clock-nine" onClick={narrowRange}>
-        {t('explore.loki-time-limit.narrow', 'Use last {{limit}}', { limit: violation.maxDurationLabel })}
+        {t('explore.loki-time-limit.narrow', 'Continue with the last {{limit}}', {
+          limit: violation.maxDurationLabel,
+        })}
       </Button>
     </div>
   );
@@ -66,6 +73,11 @@ const getStyles = (theme: GrafanaTheme2) => ({
   }),
   message: css({
     fontSize: theme.typography.bodySmall.fontSize,
+  }),
+  title: css({
+    color: theme.colors.text.primary,
+    fontSize: theme.typography.body.fontSize,
+    fontWeight: theme.typography.fontWeightMedium,
   }),
   range: css({
     color: theme.colors.text.secondary,

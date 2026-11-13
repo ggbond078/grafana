@@ -85,6 +85,8 @@ Use TLS (Transport Layer Security) for an additional layer of security when work
 
 - **Maximum lines** - Sets the maximum number of log lines returned by Loki. Increase the limit to have a bigger results set for ad-hoc analysis. Decrease the limit if your browser is sluggish when displaying log results. The default is `1000`.
 
+- **Maximum query duration**: Sets the maximum time range for a single Loki query. Grafana rejects queries from Explore, dashboards, and API clients with a larger time range before they reach Loki. Use a Grafana duration such as `30m`, `1h`, or `1d`. The default is `30m`.
+
 <!-- {{< admonition type="note" >}}
 To troubleshoot configuration and other issues, check the log file located at `/var/log/grafana/grafana.log` on Unix systems, or in `<grafana_install_dir>/data/log` on other platforms and manual installations.
 {{< /admonition >}} -->

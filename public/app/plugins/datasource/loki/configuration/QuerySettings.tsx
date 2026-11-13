@@ -6,10 +6,12 @@ import { InlineField, Input } from '@grafana/ui';
 type Props = {
   maxLines: string;
   onMaxLinedChange: (value: string) => void;
+  maxQueryDuration: string;
+  onMaxQueryDurationChange: (value: string) => void;
 };
 
 export const QuerySettings = (props: Props) => {
-  const { maxLines, onMaxLinedChange } = props;
+  const { maxLines, onMaxLinedChange, maxQueryDuration, onMaxQueryDurationChange } = props;
   return (
     <ConfigSubSection
       title="Queries"
@@ -24,7 +26,7 @@ export const QuerySettings = (props: Props) => {
       <InlineField
         label="Maximum lines"
         htmlFor="loki_config_maxLines"
-        labelWidth={22}
+        labelWidth={28}
         tooltip={
           <>
             Loki queries must contain a limit of the maximum number of lines returned (default: 1000). Increase this
@@ -40,6 +42,27 @@ export const QuerySettings = (props: Props) => {
           onChange={(event: React.FormEvent<HTMLInputElement>) => onMaxLinedChange(event.currentTarget.value)}
           width={16}
           placeholder="1000"
+          spellCheck={false}
+        />
+      </InlineField>
+      <InlineField
+        label="Maximum query duration"
+        htmlFor="loki_config_maxQueryDuration"
+        labelWidth={28}
+        tooltip={
+          <>
+            Limits the time range of a single Loki query. Queries from Explore, dashboards, and API clients such as MCP
+            are rejected when their range exceeds this value. Use a Grafana duration such as 30m, 1h, or 1d. The default
+            is 30m.
+          </>
+        }
+      >
+        <Input
+          id="loki_config_maxQueryDuration"
+          value={maxQueryDuration}
+          onChange={(event: React.FormEvent<HTMLInputElement>) => onMaxQueryDurationChange(event.currentTarget.value)}
+          width={16}
+          placeholder="30m"
           spellCheck={false}
         />
       </InlineField>

@@ -7707,17 +7707,17 @@
     },
     "loki-time-limit": {
       "alert": "Query blocked to protect Loki",
-      "badge-exceeded": "Exceeds {{limit}}",
-      "badge-ok": "Max {{limit}}",
+      "badge-exceeded": "Over {{limit}}",
+      "badge-ok": "Within {{limit}}",
       "description": "The selected {{duration}} minute range exceeds the {{limit}} limit. Narrow the range before running the query.",
       "edit": "Edit time range",
-      "narrow": "Use last {{limit}}",
+      "narrow": "Continue with the last {{limit}}",
       "narrowed-message": "Query is now limited to {{limit}}.",
       "narrowed-title": "Time range narrowed",
-      "prompt": "Query blocked: {{duration}} minutes exceeds the {{limit}} limit. Narrow the time range to continue.",
+      "prompt": "Loki queries over {{limit}} scan more log data and can affect log service stability. This request covers {{duration}} minutes, so it wasn't sent. Continue with the last {{limit}} to keep the query light.",
       "selected": "Selected",
       "suggested": "Suggested",
-      "title": "Query time range is too wide"
+      "title": "This log query covers a lot of time"
     },
     "feature-toggle-page": {
       "description-explore-disabled": "To enable Explore, enable it in the Grafana config:",

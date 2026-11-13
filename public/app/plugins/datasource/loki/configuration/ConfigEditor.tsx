@@ -31,6 +31,7 @@ const makeJsonUpdater =
   };
 
 const setMaxLines = makeJsonUpdater('maxLines');
+const setMaxQueryDuration = makeJsonUpdater('maxQueryDuration');
 const setDerivedFields = makeJsonUpdater('derivedFields');
 
 export const ConfigEditor = (props: Props) => {
@@ -67,6 +68,8 @@ export const ConfigEditor = (props: Props) => {
           <QuerySettings
             maxLines={options.jsonData.maxLines || ''}
             onMaxLinedChange={(value) => onOptionsChange(setMaxLines(options, value))}
+            maxQueryDuration={options.jsonData.maxQueryDuration || ''}
+            onMaxQueryDurationChange={(value) => onOptionsChange(setMaxQueryDuration(options, value))}
           />
           <DerivedFields
             fields={options.jsonData.derivedFields}

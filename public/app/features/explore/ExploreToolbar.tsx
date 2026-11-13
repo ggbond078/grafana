@@ -26,7 +26,7 @@ import { getFiscalYearStartMonth, getTimeZone } from '../profile/state/selectors
 
 import { ExploreTimeControls } from './ExploreTimeControls';
 import { LiveTailButton } from './LiveTailButton';
-import { getLokiTimeRangeViolation, isLokiExploreQuery } from './LokiQueryTimeRangeLimit';
+import { getLokiQueryTimeRangeLimit, getLokiTimeRangeViolation } from './LokiQueryTimeRangeLimit';
 import { LokiQueryTimeRangeLimitBadge } from './LokiQueryTimeRangeLimitBadge';
 import { ShortLinkButtonMenu } from './ShortLinkButtonMenu';
 import { ToolbarExtensionPoint } from './extensions/ToolbarExtensionPoint';
@@ -93,10 +93,15 @@ export function ExploreToolbar({ exploreId, onChangeTime, onContentOutlineToogle
   );
   const lokiViolation = getLokiTimeRangeViolation({
     datasourceType: datasourceInstance?.type,
+    datasourceUid: datasourceInstance?.uid,
     queries,
     range,
   });
-  const isLokiQuery = isLokiExploreQuery({ datasourceType: datasourceInstance?.type, queries });
+  const lokiLimit = getLokiQueryTimeRangeLimit({
+    datasourceType: datasourceInstance?.type,
+    datasourceUid: datasourceInstance?.uid,
+    queries,
+  });
   const loading = useSelector(selectIsWaitingForData(exploreId));
   const isLargerPane = useSelector((state: StoreState) => state.explore.largerExploreId === exploreId);
   const showSmallTimePicker = useSelector((state) => splitted || state.explore.panes[exploreId]!.containerWidth < 1210);
@@ -316,7 +321,12 @@ export function ExploreToolbar({ exploreId, onChangeTime, onContentOutlineToogle
                 onChangeTimeZone={onChangeTimeZone}
                 onChangeFiscalYearStartMonth={onChangeFiscalYearStartMonth}
               />
-              {isLokiQuery && <LokiQueryTimeRangeLimitBadge exceeded={Boolean(lokiViolation)} />}
+              {lokiLimit && (
+                <LokiQueryTimeRangeLimitBadge
+                  exceeded={Boolean(lokiViolation)}
+                  maxDurationLabel={lokiLimit.maxDurationLabel}
+                />
+              )}
             </div>
           ),
           <RefreshPicker

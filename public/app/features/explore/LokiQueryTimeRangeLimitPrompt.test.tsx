@@ -32,8 +32,10 @@ describe('LokiQueryTimeRangeLimitPrompt', () => {
       </TestProvider>
     );
 
+    expect(screen.getByText('This log query covers a lot of time')).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('60 minutes');
-    await userEvent.click(screen.getByRole('button', { name: /Use last 30m/ }));
+    expect(screen.getByRole('alert')).toHaveTextContent("wasn't sent");
+    await userEvent.click(screen.getByRole('button', { name: /Continue with the last 30m/ }));
 
     expect(dispatch).toHaveBeenCalledWith(expect.anything());
     expect(store.getState().explore.panes.left!.range.raw.from.valueOf()).toBe(to.valueOf() - 30 * 60 * 1000);

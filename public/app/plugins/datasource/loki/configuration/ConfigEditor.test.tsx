@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { createDefaultConfigOptions } from '../mocks/datasource';
@@ -30,6 +30,21 @@ describe('ConfigEditor', () => {
       expect.objectContaining({
         jsonData: expect.objectContaining({
           maxLines: '5312',
+        }),
+      })
+    );
+  });
+
+  it('should update the maximum query duration', async () => {
+    const onChangeMock = jest.fn();
+    render(<ConfigEditor onOptionsChange={onChangeMock} options={createDefaultConfigOptions()} />);
+    const maxQueryDurationInput = screen.getByLabelText('Maximum query duration');
+    fireEvent.change(maxQueryDurationInput, { target: { value: '1h' } });
+
+    expect(onChangeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jsonData: expect.objectContaining({
+          maxQueryDuration: '1h',
         }),
       })
     );

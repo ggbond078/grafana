@@ -1,11 +1,20 @@
 import { dateTime } from '@grafana/data';
 
 import {
+  DEFAULT_LOKI_MAX_QUERY_DURATION,
   getClampedTimeRange,
+  getLokiQueryTimeRangeLimit,
   getLokiTimeRangeViolation,
   isLokiExploreQuery,
-  LOKI_MAX_QUERY_DURATION,
 } from './LokiQueryTimeRangeLimit';
+
+const mockGetInstanceSettings = jest.fn();
+
+jest.mock('@grafana/runtime', () => ({
+  getDataSourceSrv: () => ({
+    getInstanceSettings: mockGetInstanceSettings,
+  }),
+}));
 
 const createRange = (durationMs: number) => {
   const to = dateTime('2026-11-12T12:00:00.000Z');
@@ -14,6 +23,11 @@ const createRange = (durationMs: number) => {
 };
 
 describe('Loki query time range limit', () => {
+  beforeEach(() => {
+    mockGetInstanceSettings.mockReset();
+    mockGetInstanceSettings.mockReturnValue(undefined);
+  });
+
   it('identifies a Loki data source by root data source type', () => {
     expect(isLokiExploreQuery({ datasourceType: 'loki', queries: [] })).toBe(true);
   });
@@ -47,6 +61,41 @@ describe('Loki query time range limit', () => {
     expect(violation).toBeUndefined();
   });
 
+  it('uses the Loki data source maximum query duration', () => {
+    mockGetInstanceSettings.mockReturnValue({
+      type: 'loki',
+      uid: 'loki-1',
+      jsonData: { maxQueryDuration: '1h' },
+    });
+
+    expect(
+      getLokiQueryTimeRangeLimit({
+        datasourceType: 'loki',
+        datasourceUid: 'loki-1',
+        queries: [],
+      })
+    ).toEqual({
+      maxDurationMs: 60 * 60 * 1000,
+      maxDurationLabel: '1h',
+    });
+  });
+
+  it('rejects a configured duration without a unit', () => {
+    mockGetInstanceSettings.mockReturnValue({
+      type: 'loki',
+      uid: 'loki-1',
+      jsonData: { maxQueryDuration: '30' },
+    });
+
+    expect(() =>
+      getLokiQueryTimeRangeLimit({
+        datasourceType: 'loki',
+        datasourceUid: 'loki-1',
+        queries: [],
+      })
+    ).toThrow('use a duration with a unit');
+  });
+
   it('blocks a range longer than 30 minutes', () => {
     const violation = getLokiTimeRangeViolation({
       datasourceType: 'loki',
@@ -57,7 +106,7 @@ describe('Loki query time range limit', () => {
     expect(violation).toEqual({
       durationMs: 31 * 60 * 1000,
       maxDurationMs: 30 * 60 * 1000,
-      maxDurationLabel: LOKI_MAX_QUERY_DURATION,
+      maxDurationLabel: DEFAULT_LOKI_MAX_QUERY_DURATION,
     });
   });
 
